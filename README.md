@@ -3,3 +3,4 @@
 ## Team Roster
 
 Alexander Smith
+Kelvin Lu
