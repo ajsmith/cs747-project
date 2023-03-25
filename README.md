@@ -2,6 +2,6 @@
 
 ## Team Roster
 
-Alexander Smith
-Kelvin Lu
-Archange Giscard Destiné
+- Alexander Smith
+- Kelvin Lu
+- Archange Giscard Destiné
