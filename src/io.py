@@ -5,9 +5,13 @@ import pandas as pd
 
 INPUT_DIR = Path(r"data/uniprot_sprot.fasta")
 
-def uniprot_fasta_to_df(input_dir:Path) -> pd.DataFrame:
+def parsed_fasta_df(input_dir:Path) -> pd.DataFrame:
     """
         Parse the uniprot fasta data and put it into a Dataframe. 
+        Paramters: 
+            -input_dir(Path): The directory of the fasta data. 
+        Return: 
+            - A dataframe with the following keys [db, unique_id, entry_name, sequence]
     """
     # output = pd.DataFrame()
     db = []
@@ -42,7 +46,7 @@ def uniprot_fasta_to_df(input_dir:Path) -> pd.DataFrame:
 def main(): 
     """ Test function """
 
-    uniprot_fasta_to_df(INPUT_DIR)
+    parsed_fasta_df = parsed_fasta_df(INPUT_DIR)
 
 if __name__ == "__main__":
     main()
