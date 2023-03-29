@@ -1,0 +1,14 @@
+Sphinx
+flake8
+ipython
+mypy
+numpydoc
+pylint
+pyls-isort
+pyls-memestra
+pylsp-mypy
+pylsp-rope
+pytest
+pytest-cov
+python-lsp-server[all]
+types-PyYAML
