@@ -1,5 +1,9 @@
 # IGNORE DATA
 data
+*.csv
+
+# Emacs backup files
+*~
 
 # PYTHON GITIGNORE
 # Byte-compiled / optimized / DLL files

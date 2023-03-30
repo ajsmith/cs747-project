@@ -43,10 +43,15 @@ def parsed_fasta_df(input_dir:Path) -> pd.DataFrame:
 
 
 
-def main(): 
-    """ Test function """
+def main():
+    """Test function"""
+    df = parsed_fasta_df(INPUT_DIR)
+    entry_count = len(df)
+    print(f'Parsed {entry_count} entries.')
 
-    parsed_fasta_df = parsed_fasta_df(INPUT_DIR)
+    df.to_csv('seq.csv')
+    print('Saved data to seq.csv')
+
 
 if __name__ == "__main__":
     main()
