@@ -1,8 +1,7 @@
-#/usr/bin/env bash ./download_data.sh
+#!/usr/bin/env bash
 
-# download 
-wget https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz
-mkdir data
-gzip -d uniprot_sprot.fasta.gz  
-mv uniprot_sprot.fasta data
-rm uniprotq_sprot.fasta
+# download
+curl -LO https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz
+mkdir -pv data
+gzip -dv uniprot_sprot.fasta.gz
+mv -v uniprot_sprot.fasta data/
