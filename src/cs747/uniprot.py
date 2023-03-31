@@ -91,28 +91,38 @@ def lookup_uniprot_organism(organism_id: str) -> dict:
     return result
 
 
-def populate_taxonomy_db(seq_df, tax_db):
+def populate_taxonomy_db(seq_df, tax_db, save_data, save_interval=500):
     """Populate the taxonomy db from organisms in the sequence dataframe."""
-    report_size = 10
-    processed = []
+    count = 0
+    prev_count = 0
 
     for organism_id in seq_df['organism_id']:
 
         if organism_id not in tax_db:
             entry = lookup_uniprot_organism(organism_id)
             tax_db[organism_id] = entry
-            processed.append(organism_id)
+            count += 1
 
-        if len(processed) >= report_size:
-            print(f'Added {processed}')
-            processed = []
+        if count > prev_count and count % save_interval == 0:
+            save_data()
+            entry_count = count - prev_count
+            prev_count = count
+            print(f'Added {entry_count} entries to taxonomy DB')
+
+    return count
 
 
 def load_taxonomy_db(db_file_path=TAXONOMY_DB_PATH):
-    """Load a taxonomy DB from a backing file."""
+    """Load taxonomy DB from a backing file."""
     with open(db_file_path, 'rb') as db_file:
         result = pickle.load(db_file)
         return result
+
+
+def save_taxonomy_db(tax_db, db_file_path=TAXONOMY_DB_PATH):
+    """Save taxonomy DB to a backing file."""
+    with open(db_file_path, 'wb') as db_file:
+        pickle.dump(tax_db, db_file)
 
 
 def build_taxonomy_db(db_file_path=TAXONOMY_DB_PATH):
@@ -127,11 +137,11 @@ def build_taxonomy_db(db_file_path=TAXONOMY_DB_PATH):
     else:
         print(f'Loaded taxonomy DB from {db_file_path}')
 
-    populate_taxonomy_db(seq_df, tax_db)
-
-    with open(db_file_path, 'wb') as db_file:
-        pickle.dump(tax_db, db_file)
-        print(f'Saved taxonomy DB to {db_file_path}')
+    save_data = lambda: save_taxonomy_db(tax_db, db_file_path)
+    count = populate_taxonomy_db(seq_df, tax_db, save_data, 200)
+    save_data()
+    print(f'Total: {count} entries added to taxonomy DB')
+    print(f'Saved taxonomy DB to {db_file_path}')
 
 
 def import_fasta_to_csv():
