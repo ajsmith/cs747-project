@@ -12,6 +12,7 @@ import pandas as pd
 
 
 INPUT_DIR = Path(r"data/uniprot_sprot.fasta")
+TAXONOMY_DB_PATH = Path(r'data/taxonomy_db.pickle')
 
 
 HeaderFields = namedtuple(
@@ -91,31 +92,46 @@ def lookup_uniprot_organism(organism_id: str) -> dict:
 
 
 def populate_taxonomy_db(seq_df, tax_db):
-    """Populate the taxonomy database from organisms in the sequence dataframe.
+    """Populate the taxonomy db from organisms in the sequence dataframe."""
+    report_size = 10
+    processed = []
 
-    """
     for organism_id in seq_df['organism_id']:
+
         if organism_id not in tax_db:
-            print(f'Adding {organism_id}')
             entry = lookup_uniprot_organism(organism_id)
             tax_db[organism_id] = entry
+            processed.append(organism_id)
+
+        if len(processed) >= report_size:
+            print(f'Added {processed}')
+            processed = []
 
 
-def build_taxonomy_db():
+def load_taxonomy_db(db_file_path=TAXONOMY_DB_PATH):
+    """Load a taxonomy DB from a backing file."""
+    with open(db_file_path, 'rb') as db_file:
+        result = pickle.load(db_file)
+        return result
+
+
+def build_taxonomy_db(db_file_path=TAXONOMY_DB_PATH):
     """Create the taxonomy database."""
     seq_df = pd.read_csv('data/seq.csv')
-    db_file_path = 'data/taxonomy_db.pickle'
 
     try:
-        with open(db_file_path, 'rb') as db_file:
-            tax_db = pickle.load(db_file)
+        tax_db = load_taxonomy_db(db_file_path)
     except FileNotFoundError:
+        print('Initializing new taxonomy DB')
         tax_db = {}
+    else:
+        print(f'Loaded taxonomy DB from {db_file_path}')
 
     populate_taxonomy_db(seq_df, tax_db)
 
-    with open(db_file_path, 'w') as db_file:
+    with open(db_file_path, 'wb') as db_file:
         pickle.dump(tax_db, db_file)
+        print(f'Saved taxonomy DB to {db_file_path}')
 
 
 def import_fasta_to_csv():
