@@ -13,6 +13,7 @@ import pandas as pd
 
 INPUT_DIR = Path(r"data/uniprot_sprot.fasta")
 TAXONOMY_DB_PATH = Path(r'data/taxonomy_db.pickle')
+SEQUENCE_CSV_PATH = Path(r'data/seq.csv')
 
 
 HeaderFields = namedtuple(
@@ -91,56 +92,81 @@ def lookup_uniprot_organism(organism_id: str) -> dict:
     return result
 
 
-def populate_taxonomy_db(seq_df, tax_db, save_data, save_interval=500):
-    """Populate the taxonomy db from organisms in the sequence dataframe."""
-    count = 0
-    prev_count = 0
+class TaxonomyDatabaseBuilder:
+    """Utility to create a Taxonomy DB from Uniprot data."""
 
-    for organism_id in seq_df['organism_id']:
+    def __init__(
+            self,
+            db_file_path=TAXONOMY_DB_PATH,
+            seq_csv_path=SEQUENCE_CSV_PATH,
+    ):
+        """Create a TaxonomyDatabaseBuilder."""
 
-        if organism_id not in tax_db:
-            entry = lookup_uniprot_organism(organism_id)
-            tax_db[organism_id] = entry
-            count += 1
+        self.db_file_path = db_file_path
+        self.seq_csv_path = seq_csv_path
+        self.init_db()
 
-        if count > prev_count and count % save_interval == 0:
-            save_data()
-            entry_count = count - prev_count
-            prev_count = count
-            print(f'Added {entry_count} entries to taxonomy DB')
+    def populate(self, save_interval=100):
+        """Populate DB from organisms in the sequence dataframe."""
 
-    return count
+        seq_df = pd.read_csv(self.seq_csv_path)
+        n_seq = len(seq_df)
+        count = 0
+        prev_count = 0
+
+        print(f'Populating taxonomy DB from {n_seq} sequence entries.')
+
+        for organism_id in seq_df['organism_id']:
+
+            if organism_id not in self.db:
+                entry = lookup_uniprot_organism(organism_id)
+                self.db[organism_id] = entry
+                count += 1
+
+            if count > prev_count and count % save_interval == 0:
+                self.save()
+                entry_count = count - prev_count
+                prev_count = count
+                print(f'{entry_count} organisms added to taxonomy DB.')
+
+        self.save()
+        db_size = len(self.db)
+        print(f'{count} organisms added to taxonomy DB.')
+        print(f'Taxonomy DB contains {db_size} total organisms.')
+
+    def load(self):
+        """Load DB from backing file and return it."""
+
+        with open(self.db_file_path, 'rb') as db_file:
+            result = pickle.load(db_file)
+            return result
+
+    def init_db(self):
+        """Instantiate the DB."""
+
+        try:
+            db = self.load()
+        except FileNotFoundError:
+            print('Initializing new taxonomy DB')
+            db = {}
+        else:
+            print(f'Loaded taxonomy DB from {self.db_file_path}')
+        self.db = db
+
+    def save(self):
+        """Save DB to backing file."""
+
+        with open(self.db_file_path, 'wb') as db_file:
+            pickle.dump(self.db, db_file)
 
 
-def load_taxonomy_db(db_file_path=TAXONOMY_DB_PATH):
-    """Load taxonomy DB from a backing file."""
-    with open(db_file_path, 'rb') as db_file:
-        result = pickle.load(db_file)
-        return result
-
-
-def save_taxonomy_db(tax_db, db_file_path=TAXONOMY_DB_PATH):
-    """Save taxonomy DB to a backing file."""
-    with open(db_file_path, 'wb') as db_file:
-        pickle.dump(tax_db, db_file)
-
-
-def build_taxonomy_db(db_file_path=TAXONOMY_DB_PATH):
+def build_taxonomy_db(
+        db_file_path=TAXONOMY_DB_PATH,
+        seq_csv_path=SEQUENCE_CSV_PATH
+):
     """Create the taxonomy database."""
-    seq_df = pd.read_csv('data/seq.csv')
-
-    try:
-        tax_db = load_taxonomy_db(db_file_path)
-    except FileNotFoundError:
-        print('Initializing new taxonomy DB')
-        tax_db = {}
-    else:
-        print(f'Loaded taxonomy DB from {db_file_path}')
-
-    save_data = lambda: save_taxonomy_db(tax_db, db_file_path)
-    count = populate_taxonomy_db(seq_df, tax_db, save_data, 200)
-    save_data()
-    print(f'Total: {count} entries added to taxonomy DB')
+    db_builder = TaxonomyDatabaseBuilder(db_file_path, seq_csv_path)
+    db_builder.populate(save_interval=100)
     print(f'Saved taxonomy DB to {db_file_path}')
 
 
