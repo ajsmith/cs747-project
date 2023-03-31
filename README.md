@@ -28,12 +28,29 @@ Activate the environment with the command:
 $ source venv/bin/activate
 ```
 
+# Usage
 
-# Downloading data
+## Downloading sequence data
 
 Run the `download_data.sh` script.
 
+This downloads the Uniprot Swiss-Prot FASTA data and unpacks it to
+`data/uniprot_sprot.fasta`.
 
-# Parsing data
+
+## Generating the sequence data CSV
 
 Run `cs747-parse-uniprot-fasta`
+
+This parses Uniprot FASTA data into a Pandas dataframe and saves it as
+a CSV. This creates the file, `data/seq.csv`
+
+
+## Building the taxonomy database
+
+Run `cs747-build-taxonomy-db`
+
+This populates the taxonomy database from sequence data contained in
+the sequence CSV by looking up organism entries from the Uniprot
+Taxonomy REST API. It then saves it as a Python Pickle file, named
+`data/taxonomy_db.pickle`.
