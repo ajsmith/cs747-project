@@ -5,7 +5,8 @@ from setuptools import setup, find_packages
 
 ENTRY_POINTS = {
     'console_scripts': [
-        'cs747-parse-uniprot-fasta=cs747.uniprot:import_fasta_to_csv'
+        'cs747-parse-uniprot-fasta=cs747.uniprot:import_fasta_to_csv',
+        'cs747-build-taxonomy-db=cs747.uniprot:build_taxonomy_db',
     ]
 }
 

@@ -3,6 +3,9 @@
 """
 from collections import namedtuple
 from pathlib import Path
+from urllib.request import urlopen
+import json
+import pickle
 
 from Bio.SeqIO.FastaIO import FastaIterator
 import pandas as pd
@@ -73,6 +76,46 @@ def parsed_fasta_df(input_dir:Path) -> pd.DataFrame:
 
     output = pd.DataFrame(data)
     return output
+
+
+def lookup_uniprot_organism(organism_id: str) -> dict:
+    """Query Uniprot for an organism by ID.
+
+    """
+    result = None
+    base_url = 'https://rest.uniprot.org/taxonomy/'
+    query_url = f'{base_url}{organism_id}.json'
+    response = urlopen(query_url)
+    result = json.loads(response.read())
+    return result
+
+
+def populate_taxonomy_db(seq_df, tax_db):
+    """Populate the taxonomy database from organisms in the sequence dataframe.
+
+    """
+    for organism_id in seq_df['organism_id']:
+        if organism_id not in tax_db:
+            print(f'Adding {organism_id}')
+            entry = lookup_uniprot_organism(organism_id)
+            tax_db[organism_id] = entry
+
+
+def build_taxonomy_db():
+    """Create the taxonomy database."""
+    seq_df = pd.read_csv('data/seq.csv')
+    db_file_path = 'data/taxonomy_db.pickle'
+
+    try:
+        with open(db_file_path, 'rb') as db_file:
+            tax_db = pickle.load(db_file)
+    except FileNotFoundError:
+        tax_db = {}
+
+    populate_taxonomy_db(seq_df, tax_db)
+
+    with open(db_file_path, 'w') as db_file:
+        pickle.dump(tax_db, db_file)
 
 
 def import_fasta_to_csv():
