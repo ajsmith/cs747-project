@@ -3,6 +3,7 @@
 """
 from collections import namedtuple
 from pathlib import Path
+from typing import Union
 from urllib.request import urlopen
 import json
 import pickle
@@ -10,11 +11,11 @@ import pickle
 from Bio.SeqIO.FastaIO import FastaIterator
 import pandas as pd
 
+FilePath = Union[str, Path]
 
-INPUT_DIR = Path(r"data/uniprot_sprot.fasta")
+FASTA_FILE_PATH = Path(r"data/uniprot_sprot.fasta")
 TAXONOMY_DB_PATH = Path(r'data/taxonomy_db.pickle')
 SEQUENCE_CSV_PATH = Path(r'data/seq.csv')
-
 
 HeaderFields = namedtuple(
     'HeaderFields',
@@ -46,16 +47,23 @@ def parse_fasta_header(raw_header: str) -> HeaderFields:
     return result
 
 
-def parsed_fasta_df(input_dir:Path) -> pd.DataFrame:
+def parse_fasta_df(input_dir: Path) -> pd.DataFrame:
     """
     Parse the uniprot fasta data and put it into a Dataframe.
     Paramters:
-        -input_dir(Path): The directory of the fasta data.
+        - input_dir(Path): The directory of the fasta data.
     Return:
-        - A dataframe with the following keys [db, unique_id, entry_name, sequence]
+        - A dataframe with the following columns:
+            * db
+            * unique_id
+            * entry_name
+            * protein_name
+            * organism_name
+            * organism_id
+            * sequence
     """
 
-    data = {
+    data: dict[str, list] = {
         'db': [],
         'unique_id': [],
         'entry_name': [],
@@ -66,7 +74,7 @@ def parsed_fasta_df(input_dir:Path) -> pd.DataFrame:
     }
 
     with open(input_dir) as handle:
-        for index,value in enumerate(FastaIterator(handle)):
+        for index, value in enumerate(FastaIterator(handle)):
             fields = parse_fasta_header(value.description)
             data['db'].append(fields.db)
             data['unique_id'].append(fields.unique_id)
@@ -92,6 +100,15 @@ def lookup_uniprot_organism(organism_id: str) -> dict:
     return result
 
 
+def load_taxonomy_db(
+        db_file_path: FilePath = TAXONOMY_DB_PATH
+) -> dict[str, dict]:
+    """Load the taxonomy DB from a backing file and return it."""
+    with open(db_file_path, 'rb') as db_file:
+        result = pickle.load(db_file)
+        return result
+
+
 class TaxonomyDatabaseBuilder:
     """Utility to create a Taxonomy DB from Uniprot data."""
 
@@ -99,12 +116,13 @@ class TaxonomyDatabaseBuilder:
             self,
             db_file_path=TAXONOMY_DB_PATH,
             seq_csv_path=SEQUENCE_CSV_PATH,
+            recreate=False,
     ):
         """Create a TaxonomyDatabaseBuilder."""
 
         self.db_file_path = db_file_path
         self.seq_csv_path = seq_csv_path
-        self.init_db()
+        self.init_db(recreate=recreate)
 
     def populate(self, save_interval=100):
         """Populate DB from organisms in the sequence dataframe."""
@@ -136,26 +154,29 @@ class TaxonomyDatabaseBuilder:
 
     def load(self):
         """Load DB from backing file and return it."""
+        result = load_taxonomy_db(self.db_file_path)
+        return result
 
-        with open(self.db_file_path, 'rb') as db_file:
-            result = pickle.load(db_file)
-            return result
-
-    def init_db(self):
+    def init_db(self, recreate=False):
         """Instantiate the DB."""
+        db = None
 
-        try:
-            db = self.load()
-        except FileNotFoundError:
+        if recreate is False:
+            try:
+                db = self.load()
+            except FileNotFoundError:
+                print('No database found.')
+            else:
+                print(f'Loaded taxonomy DB from {self.db_file_path}')
+
+        if db is None:
             print('Initializing new taxonomy DB')
             db = {}
-        else:
-            print(f'Loaded taxonomy DB from {self.db_file_path}')
+
         self.db = db
 
     def save(self):
         """Save DB to backing file."""
-
         with open(self.db_file_path, 'wb') as db_file:
             pickle.dump(self.db, db_file)
 
@@ -172,9 +193,25 @@ def build_taxonomy_db(
 
 def import_fasta_to_csv():
     """Test function"""
-    df = parsed_fasta_df(INPUT_DIR)
+    df = parse_fasta_df(FASTA_FILE_PATH)
     entry_count = len(df)
     print(f'Parsed {entry_count} entries.')
 
     df.to_csv('data/seq.csv', index=False)
     print('Saved data to data/seq.csv')
+
+
+def create_test_data(data_dir='test/cs747/data') -> None:
+    """Recreate test data from a sample FASTA file."""
+    data_dir = Path(data_dir)
+    fasta_file_path = data_dir / 'uniprot_sprot.fasta'
+    seq_csv_path = data_dir / 'seq.csv'
+    tax_db_file_path = data_dir / 'taxonomy_db.pickle'
+
+    seq_df = parse_fasta_df(fasta_file_path)
+    seq_df.to_csv(seq_csv_path, index=False)
+
+    builder = TaxonomyDatabaseBuilder(
+        tax_db_file_path, seq_csv_path, recreate=True)
+    builder.populate()
+    print(f"Test data created in {data_dir}")
