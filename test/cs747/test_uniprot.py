@@ -1,7 +1,14 @@
 """Test Uniprot data utilities.
 
 """
-from cs747.uniprot import lookup_uniprot_organism, parse_fasta_header
+from tempfile import NamedTemporaryFile
+
+from cs747.uniprot import (
+    TaxonomyDatabaseBuilder,
+    load_taxonomy_db,
+    lookup_uniprot_organism,
+    parse_fasta_header,
+)
 
 
 def test_parse_fasta_header():
@@ -24,3 +31,15 @@ def test_lookup_uniprot_organism():
     assert str(entry['taxonId']) == organism_id
     assert entry['scientificName'] == "Methanococcus maripaludis (strain C5 / ATCC BAA-1333)"
     assert entry['lineage'][-2]['scientificName'] == "Archaea"
+
+
+def test_create_taxonomy_db(sequence_csv_path, taxonomy_db):
+    """Test taxonomy DB creation."""
+    tmp_file = NamedTemporaryFile(prefix='cs747.test-')
+    db_file_path = tmp_file.name
+    tmp_file.close()
+
+    builder = TaxonomyDatabaseBuilder(db_file_path, sequence_csv_path)
+    builder.populate(save_interval=3)
+    new_tax_db = load_taxonomy_db(db_file_path)
+    assert new_tax_db == taxonomy_db
