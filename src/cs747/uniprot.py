@@ -2,8 +2,8 @@
 
 """
 from collections import namedtuple
+from functools import cache
 from pathlib import Path
-from typing import Union
 from urllib.request import urlopen
 import json
 import pickle
@@ -12,7 +12,6 @@ import random
 from Bio.SeqIO.FastaIO import FastaIterator
 import pandas as pd
 
-FilePath = Union[str, Path]
 
 FASTA_FILE_PATH = Path(r"data/uniprot_sprot.fasta")
 TAXONOMY_DB_PATH = Path(r'data/taxonomy_db.pickle')
@@ -101,13 +100,17 @@ def lookup_uniprot_organism(organism_id: str) -> dict:
     return result
 
 
-def load_taxonomy_db(
-        db_file_path: FilePath = TAXONOMY_DB_PATH
-) -> dict:
+def load_taxonomy_db(db_file_path=TAXONOMY_DB_PATH) -> dict[str, dict]:
     """Load the taxonomy DB from a backing file and return it."""
     with open(db_file_path, 'rb') as db_file:
         result = pickle.load(db_file)
         return result
+
+
+def load_sequence_df(csv_path=SEQUENCE_CSV_PATH) -> pd.DataFrame:
+    """Load a sequence dataframe from a CSV file and return it."""
+    result = pd.read_csv(csv_path)
+    return result
 
 
 class TaxonomyDatabaseBuilder:
@@ -180,6 +183,129 @@ class TaxonomyDatabaseBuilder:
         """Save DB to backing file."""
         with open(self.db_file_path, 'wb') as db_file:
             pickle.dump(self.db, db_file)
+
+
+class Labeler:
+    """Create labels for sequence data."""
+
+    def __init__(
+            self,
+            db_file_path=TAXONOMY_DB_PATH,
+            seq_csv_path=SEQUENCE_CSV_PATH,
+    ):
+        """Create a Labeler."""
+        self.tax_db = load_taxonomy_db(db_file_path)
+        self.seq_df = load_sequence_df(seq_csv_path)
+
+    def lineage_by_name(self, organism_id):
+        """Return the lineage as a list of scientific names.
+
+        The returned list is ordered from most specific to least
+        specific.
+        """
+        entry = self.tax_db[organism_id]
+        result = [t['scientificName'] for t in entry['lineage']]
+        return result
+
+    def has_lineage(self, organism_id, tax_name, tax_rank=None):
+        """Return True if the organism has the given taxonomy.
+
+        If `tax_rank` is not None, returns True only if the taxonomic
+        name is found at the given rank index.
+        """
+        lineage = self.lineage_by_name(organism_id)
+        if tax_rank is None:
+            result = tax_name in lineage
+        else:
+            result = lineage[tax_rank] == tax_name
+        return result
+
+    #@cache
+    def is_virus(self, organism_id):
+        """Return True if the organism is a virus."""
+        result = self.has_lineage(organism_id, "Viruses", -1)
+        return result
+
+    def is_cellular_organism(self, organism_id):
+        """Return True if the organism is a cellular organism."""
+        result = self.has_lineage(organism_id, "cellular organisms", -1)
+        return result
+
+    def is_eukaryote(self, organism_id):
+        """Return True if the organism is a eukaryote."""
+        result = False
+        if self.is_cellular_organism(organism_id):
+            result = self.has_lineage(organism_id, "Eukaryota", -2)
+        return result
+
+    #@cache
+    def is_bacteria(self, organism_id):
+        """Return True if the organism is a bacteria."""
+        result = False
+        if self.is_cellular_organism(organism_id):
+            result = self.has_lineage(organism_id, "Bacteria", -2)
+        return result
+
+    def is_archaea(self, organism_id):
+        """Return True if the organism is an archaea."""
+        result = False
+        if self.is_cellular_organism(organism_id):
+            result = self.has_lineage(organism_id, "Archaea", -2)
+        return result
+
+    def is_viridiplantae(self, organism_id):
+        """Return True if the organism is in Viridiplantae."""
+        result = False
+        if self.is_eukaryote(organism_id):
+            result = self.has_lineage(organism_id, "Viridiplantae")
+        return result
+
+    def is_fungi(self, organism_id):
+        """Return True if the organism is in Fungi."""
+        result = False
+        if self.is_eukaryote(organism_id):
+            result = self.has_lineage(organism_id, "Fungi")
+        return result
+
+    def is_chordata(self, organism_id):
+        """Return True if the organism is in Chordata."""
+        result = False
+        if self.is_eukaryote(organism_id):
+            result = self.has_lineage(organism_id, "Chordata")
+        return result
+
+    def is_metazoa(self, organism_id):
+        """Return True if the organism is in Metazoa."""
+        result = False
+        if self.is_eukaryote(organism_id) and not self.is_chordata(organism_id):
+            result = self.has_lineage(organism_id, "Metazoa")
+        return result
+
+    def label_organism(self, organism_id):
+        """Return the label for an organism."""
+        result = None
+        if self.is_virus(organism_id):
+            result = "Viruses"
+        elif self.is_bacteria(organism_id):
+            result = "Bacteria"
+        elif self.is_archaea(organism_id):
+            result = "Archaea"
+        elif self.is_viridiplantae(organism_id):
+            result = "Viridiplantae"
+        elif self.is_fungi(organism_id):
+            result = "Fungi"
+        elif self.is_chordata(organism_id):
+            result = "Chordata"
+        elif self.is_metazoa(organism_id):
+            result = "Metazoa"
+        else:
+            result = "Eukaryota"
+        return result
+
+    def label_sequences(self):
+        """Label sequence data."""
+        labels = self.seq_df['organism_id'].map(self.label_organism)
+        self.seq_df['label'] = labels
 
 
 def build_taxonomy_db(
