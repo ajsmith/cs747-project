@@ -256,8 +256,3 @@ def generate_balanced_data(data_dir:Path = FASTA_FILE_PATH, header:str = "label"
     output_df = df.groupby(header).sample(population_number)
 
     return output_df
-
-
-if __name__ == "__main__":
-
-    generate_balanced_data()
