@@ -54,3 +54,12 @@ This populates the taxonomy database from sequence data contained in
 the sequence CSV by looking up organism entries from the Uniprot
 Taxonomy REST API. It then saves it as a Python Pickle file, named
 `data/taxonomy_db.pickle`.
+
+
+## Creating the labeled dataset
+
+Run `cs747-label-data`
+
+This labels the sequence data and balances the data for our classes.
+It saves the labeled data as a new CSV, named
+`data/labeled_sequences.csv`.
