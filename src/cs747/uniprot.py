@@ -103,7 +103,7 @@ def lookup_uniprot_organism(organism_id: str) -> dict:
 
 def load_taxonomy_db(
         db_file_path: FilePath = TAXONOMY_DB_PATH
-) -> dict:
+) -> dict[str,dict]:
     """Load the taxonomy DB from a backing file and return it."""
     with open(db_file_path, 'rb') as db_file:
         result = pickle.load(db_file)
