@@ -218,34 +218,41 @@ def create_test_data(data_dir='test/cs747/data') -> None:
     print(f"Test data created in {data_dir}")
 
 
-def generate_fake_lbl(df, header): 
+def generate_fake_lbl(df, header):
     """ Delete this function """
-    # TODO - Delete function 
+    # TODO - Delete function
     fake_labels = [f"label{x}" for x in range(8)]
     df[header] = df["db"].apply(lambda x: random.choice(fake_labels))
 
     return df
 
 
-def build_percentage_label_stats(data_dir:Path = FASTA_FILE_PATH, header:str = "label") -> dict:
+def build_percentage_label_stats(
+        data_dir: Path = FASTA_FILE_PATH, header: str = "label"
+) -> dict:
 
     df = parse_fasta_df(data_dir)
 
     # TODO - Fake labels (DELETE)
     df = generate_fake_lbl(df, header)
-    
-    # Count all of the label and divide it by population. 
+
+    # Count all of the label and divide it by population.
     percentage_df = df[header].value_counts().apply(lambda x: x/len(df))
 
-    # Convert df into dict. 
+    # Convert df into dict.
     percentage_dict = percentage_df.to_dict()
 
     # print(percentage_dict)
 
     return percentage_dict
 
-def generate_balanced_data(data_dir:Path = FASTA_FILE_PATH, header:str = "label", frac_population:float = 0.03) -> pd.DataFrame:
-    """ Genereate a balanced dataset based on the fraction of the population. """
+
+def generate_balanced_data(
+        data_dir: Path = FASTA_FILE_PATH,
+        header: str = "label",
+        frac_population: float = 0.03,
+) -> pd.DataFrame:
+    """Genereate a balanced dataset based on the fraction of the population."""
     df = parse_fasta_df(data_dir)
 
     # TODO - Fake labels - DELETE
