@@ -4,6 +4,7 @@
 from collections import namedtuple
 from functools import cache
 from pathlib import Path
+from pprint import pprint
 from urllib.request import urlopen
 import json
 import pickle
@@ -220,7 +221,6 @@ class Labeler:
             result = lineage[tax_rank] == tax_name
         return result
 
-    #@cache
     def is_virus(self, organism_id):
         """Return True if the organism is a virus."""
         result = self.has_lineage(organism_id, "Viruses", -1)
@@ -238,7 +238,6 @@ class Labeler:
             result = self.has_lineage(organism_id, "Eukaryota", -2)
         return result
 
-    #@cache
     def is_bacteria(self, organism_id):
         """Return True if the organism is a bacteria."""
         result = False
@@ -281,6 +280,7 @@ class Labeler:
             result = self.has_lineage(organism_id, "Metazoa")
         return result
 
+    @cache
     def label_organism(self, organism_id):
         """Return the label for an organism."""
         result = None
@@ -344,8 +344,28 @@ def create_test_data(data_dir='test/cs747/data') -> None:
     print(f"Test data created in {data_dir}")
 
 
+def label_sequences():
+    """Label and balance the sequence data."""
+    labeler = Labeler(TAXONOMY_DB_PATH, SEQUENCE_CSV_PATH)
+    print(f"Labeling sequence data from {SEQUENCE_CSV_PATH}")
+    labeler.label_sequences()
+
+    print("Label statistics:")
+    label_stats = build_percentage_label_stats(labeler.seq_df)
+    pprint(label_stats)
+
+    print("Balancing data")
+    balanced = generate_balanced_data(labeler.seq_df)
+    balanced.to_csv('data/labeled_sequences.csv', index=False)
+    print("Wrote labeled data to data/labeled_sequences.csv")
+
+    print("Balanced data statistics:")
+    balanced_stats = build_percentage_label_stats(balanced)
+    pprint(balanced_stats)
+
+
 def generate_fake_lbl(df, header):
-    """ Delete this function """
+    """Delete this function"""
     # TODO - Delete function
     fake_labels = [f"label{x}" for x in range(8)]
     df[header] = df["db"].apply(lambda x: random.choice(fake_labels))
@@ -354,38 +374,27 @@ def generate_fake_lbl(df, header):
 
 
 def build_percentage_label_stats(
-        data_dir: Path = FASTA_FILE_PATH, header: str = "label"
+        data: pd.DataFrame, header: str = "label"
 ) -> dict:
 
-    df = parse_fasta_df(data_dir)
-
-    # TODO - Fake labels (DELETE)
-    df = generate_fake_lbl(df, header)
-
     # Count all of the label and divide it by population.
-    percentage_df = df[header].value_counts().apply(lambda x: x/len(df))
+    n = len(data)
+    percentage_df = data[header].value_counts().apply(
+        lambda x: (x / n, n * x / n)
+    )
 
     # Convert df into dict.
     percentage_dict = percentage_df.to_dict()
-
-    # print(percentage_dict)
 
     return percentage_dict
 
 
 def generate_balanced_data(
-        data_dir: Path = FASTA_FILE_PATH,
+        data: pd.DataFrame,
         header: str = "label",
-        frac_population: float = 0.03,
+        frac_population: float = 0.01639,
 ) -> pd.DataFrame:
     """Genereate a balanced dataset based on the fraction of the population."""
-    df = parse_fasta_df(data_dir)
-
-    # TODO - Fake labels - DELETE
-    df = generate_fake_lbl(df, header)
-
-    population_number = round(frac_population * len(df))
-
-    output_df = df.groupby(header).sample(population_number)
-
+    sample_size = round(frac_population * len(data))
+    output_df = data.groupby(header).sample(sample_size)
     return output_df

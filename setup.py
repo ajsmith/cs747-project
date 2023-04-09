@@ -8,6 +8,7 @@ ENTRY_POINTS = {
         'cs747-parse-uniprot-fasta=cs747.uniprot:import_fasta_to_csv',
         'cs747-build-taxonomy-db=cs747.uniprot:build_taxonomy_db',
         'cs747-create-test-data=cs747.uniprot:create_test_data',
+        'cs747-label-data=cs747.uniprot:label_sequences',
     ]
 }
 
