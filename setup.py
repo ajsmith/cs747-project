@@ -36,6 +36,9 @@ setup(
     install_requires=[
         'PyYAML',
         'biopython',
+        'fair-esm',
         'pandas',
+        'torch',
+        'torchvision',
     ],
 )
